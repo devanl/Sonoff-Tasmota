@@ -66,12 +66,14 @@ const char MCP230XX_INTCFG_RESPONSE[] PROGMEM = "{\"MCP230xx_INT%s\":{\"D_%i\":%
 const char MCP230XX_CMND_RESPONSE[] PROGMEM = "{\"S29cmnd_D%i\":{\"COMMAND\":\"%s\",\"STATE\":\"%s\"}}";
 #endif // USE_MCP230xx_OUTPUT
 
+#define INTCNT_EN_TELE  (1)
+#define INTCNT_EN_EVNT  (2)
+#define INTCNT_EN_BOTH  (INTCNT_EN_TELE|INTCNT_EN_EVNT)
+
 void MCP230xx_CheckForIntCounter(void) {
   uint8_t en = 0;
   for (uint8_t ca=0;ca<16;ca++) {
-    if (Settings.mcp230xx_config[ca].int_count_en) {
-      en=1;
-    }
+    en |= Settings.mcp230xx_config[ca].int_count_en;
   }
   if (!Settings.mcp230xx_int_timer) en=0;
   mcp230xx_int_counter_en=en;
@@ -81,7 +83,6 @@ void MCP230xx_CheckForIntCounter(void) {
     }
   }
 }
-  
 void MCP230xx_CheckForIntRetainer(void) {
   uint8_t en = 0;
   for (uint8_t ca=0;ca<16;ca++) {
@@ -97,9 +98,10 @@ void MCP230xx_CheckForIntRetainer(void) {
   }
 }
 
+
 const char* ConvertNumTxt(uint8_t statu, uint8_t pinmod=0) {
 #ifdef USE_MCP230xx_OUTPUT
-if ((6 == pinmod) && (statu < 2)) { statu = abs(statu-1); }
+  if ((6 == pinmod) && (statu < 2)) { statu = abs(statu-1); }
 #endif // USE_MCP230xx_OUTPUT
   switch (statu) {
     case 0:
@@ -409,7 +411,6 @@ void MCP230xx_Reset(uint8_t pinmode) {
     Settings.mcp230xx_config[pinx].int_report_defer=0; // Disabled
     Settings.mcp230xx_config[pinx].int_count_en=0;     // Disabled by default
     Settings.mcp230xx_config[pinx].int_retain_flag=0;  // Disabled by default
-    Settings.mcp230xx_config[pinx].spare13=0;
     Settings.mcp230xx_config[pinx].spare14=0;
     Settings.mcp230xx_config[pinx].spare15=0;
   }
@@ -533,12 +534,12 @@ bool MCP230xx_Command(void) {
       if (validpin) {
         if (paramcount > 2) {
           uint8_t intcnt = atoi(subStr(sub_string, XdrvMailbox.data, ",", 3));
-          if ((intcnt >= 0) && (intcnt <= 1)) {
+          if ((intcnt & INTCNT_EN_BOTH) == intcnt) {
             Settings.mcp230xx_config[pin].int_count_en=intcnt;
             if (Settings.mcp230xx_config[pin].int_report_defer) {
               Settings.mcp230xx_config[pin].int_report_defer=0;
               snprintf_P(log_data, sizeof(log_data), PSTR("*** WARNING *** - Disabled INTDEF for pin D%i"),pin);
-              AddLog(LOG_LEVEL_INFO);              
+              AddLog(LOG_LEVEL_INFO);
             }
             if (Settings.mcp230xx_config[pin].int_report_mode < 3) {
               Settings.mcp230xx_config[pin].int_report_mode=3;
@@ -605,7 +606,7 @@ bool MCP230xx_Command(void) {
   }
 
   uint8_t pin = atoi(subStr(sub_string, XdrvMailbox.data, ",", 1));
-  
+
   if (pin < mcp230xx_pincount) {
     if (0 == pin) {
       if (!strcmp(subStr(sub_string, XdrvMailbox.data, ",", 1), "0")) validpin=true;
@@ -751,15 +752,27 @@ void MCP230xx_OutputTelemetry(void) {
 #endif // USE_MCP230xx_OUTPUT
 
 void MCP230xx_Interrupt_Counter_Report(void) {
-  snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("{\"" D_JSON_TIME "\":\"%s\",\"MCP230_INTTIMER\": {"), GetDateAndTime(DT_LOCAL).c_str());
+  if (mcp230xx_int_counter_en & INTCNT_EN_TELE) {
+    snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("{\"" D_JSON_TIME "\":\"%s\",\"MCP230_INTTIMER\": {"), GetDateAndTime(DT_LOCAL).c_str());
+    for (uint8_t pinx = 0;pinx < mcp230xx_pincount;pinx++) {
+      if (Settings.mcp230xx_config[pinx].int_count_en) { // Counting is enabled for this pin so we add to report
+        snprintf_P(mqtt_data,sizeof(mqtt_data), PSTR("%s\"INTCNT_D%i\":%i,"),mqtt_data,pinx,mcp230xx_int_counter[pinx]);
+      }
+    }
+    snprintf_P(mqtt_data,sizeof(mqtt_data),PSTR("%s\"END\":1}}"),mqtt_data);
+    MqttPublishPrefixTopic_P(TELE, PSTR(D_RSLT_SENSOR), Settings.flag.mqtt_sensor_retain);
+  }
+
+  char command[26]; // Theoretical max = 'event MCPINTCNT_D16=65546' so 25 + 1 (for the \n)
   for (uint8_t pinx = 0;pinx < mcp230xx_pincount;pinx++) {
-    if (Settings.mcp230xx_config[pinx].int_count_en) { // Counting is enabled for this pin so we add to report
-      snprintf_P(mqtt_data,sizeof(mqtt_data), PSTR("%s\"INTCNT_D%i\":%i,"),mqtt_data,pinx,mcp230xx_int_counter[pinx]);
-      mcp230xx_int_counter[pinx]=0;
+    if (Settings.mcp230xx_config[pinx].int_count_en & INTCNT_EN_EVNT) {
+      sprintf(command,"event MCPINTCNT_D%i=%i", pinx, mcp230xx_int_counter[pinx]);
+      ExecuteCommand(command, SRC_RULE);
     }
   }
-  snprintf_P(mqtt_data,sizeof(mqtt_data),PSTR("%s\"END\":1}}"),mqtt_data);
-  MqttPublishPrefixTopic_P(TELE, PSTR(D_RSLT_SENSOR), Settings.flag.mqtt_sensor_retain);
+
+  memset(mcp230xx_int_counter, 0, sizeof(mcp230xx_int_counter));
+
   mcp230xx_int_sec_counter = 0;
 }
 
