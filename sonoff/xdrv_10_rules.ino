@@ -96,8 +96,9 @@ uint16_t rules_last_minute = 60;
 uint8_t rules_trigger_count[MAX_RULE_SETS] = { 0 };
 uint8_t rules_teleperiod = 0;
 
+#define VARS_LEN  (10)
 char event_data[100];
-char vars[MAX_RULE_VARS][10] = { 0 };
+char vars[MAX_RULE_VARS][VARS_LEN] = { 0 };
 
 /*******************************************************************************************/
 
@@ -139,11 +140,6 @@ bool RulesRuleMatch(byte rule_set, String &event, String &rule)
         pos = rule_name.indexOf("|");                  // Modulo, cannot use % easily as it is used for variable detection
         if (pos > 0) {
           compare = '%';
-        } else {
-          pos = rule_name.indexOf("&");
-          if (pos > 0) {
-            compare = '&';
-          }
         }
       }
     }
@@ -230,9 +226,6 @@ bool RulesRuleMatch(byte rule_set, String &event, String &rule)
         break;
       case '<':
         if (value < rule_value) { match = true; }
-        break;
-      case '&':
-        if (int_value & int_rule_value) { match = true; }
         break;
       case '=':
 //        if (value == rule_value) { match = true; }     // Compare values - only decimals or partly hexadecimals
@@ -550,6 +543,7 @@ boolean RulesCommand(void)
   char command[CMDSZ];
   boolean serviced = true;
   uint8_t index = XdrvMailbox.index;
+  uint8_t var_update_tele = 0;
 
   int command_code = GetCommandCode(command, sizeof(command), XdrvMailbox.topic, kRulesCommands);
   if (-1 == command_code) {
@@ -651,17 +645,23 @@ boolean RulesCommand(void)
   }
   else if ((CMND_OR == command_code) && (index > 0) && (index <= MAX_RULE_VARS)) {
     if (XdrvMailbox.data_len > 0) {
-      int tempvar = TextToInt(vars[index -1]) | TextToInt(XdrvMailbox.data);
+      int var_int = TextToInt(vars[index -1]);
+      int tempvar = var_int | TextToInt(XdrvMailbox.data);
       dtostrfd(tempvar, 0, vars[index -1]);
+      if (var_int != tempvar) {
+        var_update_tele |= (1 << (index - 1));//send event if the value changed
+      }
     }
-    snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, command, index, vars[index -1]);
   }
   else if ((CMND_AND == command_code) && (index > 0) && (index <= MAX_RULE_VARS)) {
     if (XdrvMailbox.data_len > 0) {
-      double tempvar = TextToInt(vars[index -1]) & TextToInt(XdrvMailbox.data);
+      int var_int = TextToInt(vars[index -1]);
+      double tempvar = var_int & TextToInt(XdrvMailbox.data);
       dtostrfd(tempvar, 0, vars[index -1]);
+      if (var_int != tempvar) {
+        var_update_tele |= (1 << (index - 1));//send event if the value changed
+      }
     }
-    snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, command, index, vars[index -1]);
   }
   else if ((CMND_MSB == command_code) && (index > 0) && (index <= MAX_RULE_VARS)) {
     unsigned int tempvar = MSb(TextToInt(vars[index - 1]));
@@ -691,6 +691,12 @@ boolean RulesCommand(void)
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, command, index, vars[index -1]);
   }
   else serviced = false;  // Unknown command
+
+  for(uint8_t i =0; i < MAX_RULE_VARS; i++){
+    if (var_update_tele & (1<<i)) {
+      snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, "VAR", i + 1, vars[i]);
+    }
+  }
 
   return serviced;
 }
