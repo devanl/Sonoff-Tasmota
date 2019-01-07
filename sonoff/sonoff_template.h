@@ -273,7 +273,8 @@ enum SupportedModules {
   PS_16_DZ,
   TECKIN_US,
   MANZOKU_EU_4,
-  MAXMODULE };
+  MJ_SD01
+  MAXMODULE};
 
 /********************************************************************************************/
 
@@ -1651,6 +1652,21 @@ const mytmplt kModules[MAXMODULE] PROGMEM = {
      0,
      GPIO_USER,        // GPIO16
      0
+  },
+  { "MJ-SD01",         // Martin Jerry Smart Dimmer Switch (ESP8266EX)
+     GPIO_SWT3,        // GPIO00 UP1 Button, bright up
+     GPIO_SWT2,        // GPIO01 Serial TXD and DOWN1 Button, bright down
+     0,        // GPIO02
+     GPIO_REL5,        // GPIO03 Serial RXD
+     GPIO_REL1_INV,        // GPIO04 Multi-LED RED
+     GPIO_REL4_INV,    // GPIO05 LED1
+     0, 0, 0, 0, 0, 0, // GPIO06-GPIO11
+     GPIO_REL3_INV,        // GPIO12 LED3
+     GPIO_PWM1,        // GPIO13 PWM for dimmer
+     GPIO_REL2_INV,        // GPIO14 LED2
+     GPIO_SWT1,        // GPIO15 ON/OFF Button, ties to 3.3v when pushed
+     GPIO_SWT4,        // GPIO16 RESET button, also goes to AC side and probably resets the STC chip, tied to LED1
+     0                 // ADC0 Analog input
   }
 };
 
