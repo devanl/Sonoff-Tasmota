@@ -1,7 +1,7 @@
 /*
   my_user_config.h - user specific configuration for Sonoff-Tasmota
 
-  Copyright (C) 2018  Theo Arends
+  Copyright (C) 2019  Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -96,6 +96,7 @@
 #define MQTT_BUTTON_RETAIN     0                 // [ButtonRetain] Button may send retain flag (0 = off, 1 = on)
 #define MQTT_POWER_RETAIN      0                 // [PowerRetain] Power status message may send retain flag (0 = off, 1 = on)
 #define MQTT_SWITCH_RETAIN     0                 // [SwitchRetain] Switch may send retain flag (0 = off, 1 = on)
+#define MQTT_BUTTON_SWITCH_FORCE_LOCAL     0     // [SetOption61] Force local operation when button/switch topic is set (0 = off, 1 = on)
 
 #define MQTT_STATUS_OFF        "OFF"             // [StateText1] Command or Status result when turned off (needs to be a string like "0" or "Off")
 #define MQTT_STATUS_ON         "ON"              // [StateText2] Command or Status result when turned on (needs to be a string like "1" or "On")
@@ -208,6 +209,7 @@
 //#define MY_LANGUAGE            pt-BR           // Portuguese in Brazil
 //#define MY_LANGUAGE            pt-PT           // Portuguese in Portugal
 //#define MY_LANGUAGE            ru-RU           // Russian in Russia
+//#define MY_LANGUAGE            sk-SK           // Slovak in Slovakia
 //#define MY_LANGUAGE            sv-SE           // Swedish in Sweden
 //#define MY_LANGUAGE            tr-TR           // Turkish in Turkey
 //#define MY_LANGUAGE            uk-UK           // Ukrainian in Ukrain
@@ -215,6 +217,7 @@
 //#define MY_LANGUAGE            zh-TW           // Chinese (Traditional) in Taiwan
 
 // -- Wifi Config tools ---------------------------
+#define WIFI_SOFT_AP_CHANNEL   1                 // Soft Access Point Channel number between 1 and 13 as used by Wifi Manager web GUI
 //#define USE_WPS                                  // Add support for WPS as initial wifi configuration tool (+33k code, 1k mem (5k mem with core v2.4.2+))
 //#define USE_SMARTCONFIG                          // Add support for Wifi SmartConfig as initial wifi configuration tool (+23k code, +0.6k mem)
 
@@ -246,6 +249,7 @@
 // -- MQTT - TLS ----------------------------------
   // !!! TLS uses a LOT OF MEMORY so be careful to enable other options at the same time !!!
 //#define USE_MQTT_TLS                             // Use TLS for MQTT connection (+53k code, +15k mem)
+//  #define USE_MQTT_TLS_CA_CERT                   // Use LetsEncrypt Certificate from sonoff_letsencrypt.h - Not supported with core 2.3.0
 
 // -- KNX IP Protocol -----------------------------
 //#define USE_KNX                                  // Enable KNX IP Protocol Support (+9.4k code, +3k7 mem)
@@ -279,6 +283,7 @@
 //#define USE_DS18x20                              // Optional for more than one DS18x20 sensors with id sort, single scan and read retry (+1k3 code)
 //#define W1_PARASITE_POWER                        // If using USE_DS18x20 then optimize for parasite powered sensors
 //#define USE_DS18x20_LEGACY                       // Optional for more than one DS18x20 sensors with dynamic scan using library OneWire (+1k5 code)
+//  #define DS18B20_INTERNAL_PULLUP	               // Use INPUT_PULLUP internal pullup resistors for single DS18B20
 
 // -- I2C sensors ---------------------------------
 #define USE_I2C                                  // I2C using library wire (+10k code, 0k2 mem, 124 iram)
@@ -312,21 +317,11 @@
 //    #define USE_PCA9685_FREQ 50                  // Define default PWM frequency in Hz to be used (must be within 24 to 1526) - If other value is used, it will rever to 50Hz
 //  #define USE_MPR121                             // Enable MPR121 controller (I2C addresses 0x5A, 0x5B, 0x5C and 0x5D) in input mode for touch buttons (+1k3 code)
 //  #define USE_CCS811                             // Enable CCS811 sensor (I2C address 0x5A) (+2k2 code)
-//  #define USE_MPU6050                            // Enable MPU6050 sensor (I2C address 0x68 AD0 low or 0x69 AD0 high) (+2k6 code)
+//  #define USE_MPU6050                            // Enable MPU6050 sensor (I2C address 0x68 AD0 low or 0x69 AD0 high) (+3K3 of code and 188 Bytes of RAM)
+//    #define USE_MPU6050_DMP                      // Enable in MPU6050 to use the DMP on the chip, should create better results (+8k6 of code)
+//  #define USE_PN532_I2C                          // Enable PN532 - Near Field Communication (NFC) controller (+1k6 code)
 
 //  #define USE_DISPLAY                            // Add I2C Display Support (+2k code)
-//    #define USE_DISPLAY_MODES1TO5                // Enable display mode 1 to 5 in addition to mode 0
-//    #define USE_DISPLAY_LCD                      // [DisplayModel 1] Enable Lcd display (I2C addresses 0x27 and 0x3F) (+6k code)
-//    #define USE_DISPLAY_SSD1306                  // [DisplayModel 2] Enable SSD1306 Oled 128x64 display (I2C addresses 0x3C and 0x3D) (+16k code)
-//    #define USE_DISPLAY_MATRIX                   // [DisplayModel 3] Enable 8x8 Matrix display (I2C adresseses see below) (+11k code)
-//      #define MTX_ADDRESS1     0x71              // [DisplayAddress1] I2C address of first 8x8 matrix module
-//      #define MTX_ADDRESS2     0x74              // [DisplayAddress2] I2C address of second 8x8 matrix module
-//      #define MTX_ADDRESS3     0x75              // [DisplayAddress3] I2C address of third 8x8 matrix module
-//      #define MTX_ADDRESS4     0x72              // [DisplayAddress4] I2C address of fourth 8x8 matrix module
-//      #define MTX_ADDRESS5     0x73              // [DisplayAddress5] I2C address of fifth 8x8 matrix module
-//      #define MTX_ADDRESS6     0x76              // [DisplayAddress6] I2C address of sixth 8x8 matrix module
-//      #define MTX_ADDRESS7     0x00              // [DisplayAddress7] I2C address of seventh 8x8 matrix module
-//      #define MTX_ADDRESS8     0x00              // [DisplayAddress8] I2C address of eigth 8x8 matrix module
 // #define USE_DS3231                          // Enable use DS3231 external RTC , usefall when you don't have avaliable WIFI. see docs in the source file (+1k2 code)
 //  #define USE_RTC_ADDR  0x68                  //you can change the addrsss of the DS3231 RTC, default is 0x68, not mandatory fieled
 
@@ -354,6 +349,7 @@
 //#define USE_SERIAL_BRIDGE                        // Add support for software Serial Bridge (+0k8 code)
 //#define USE_SDM120                               // Add support for Eastron SDM120-Modbus energy meter (+1k7 code)
   #define SDM120_SPEED         9600              // SDM120-Modbus RS485 serial speed (default: 2400 baud)
+  #define USE_SDM220                             // Add extra parameters for SDM220 (+0k1 code)
 //#define USE_SDM630                               // Add support for Eastron SDM630-Modbus energy meter (+2k code)
   #define SDM630_SPEED         9600              // SDM630-Modbus RS485 serial speed (default: 9600 baud)
 //#define USE_MP3_PLAYER                           // Use of the DFPlayer Mini MP3 Player RB-DFR-562 commands: play, volume and stop
@@ -362,6 +358,7 @@
   #define TUYA_DIMMER_ID       0                 // Default dimmer Id
 //#define USE_ARMTRONIX_DIMMERS                    // Add support for Armtronix Dimmers (+1k4 code)
 //#define USE_PS_16_DZ                             // ADD support for PS-16-DZ Dimmer
+//#define USE_AZ7798                               // Add support for AZ-Instrument 7798 CO2 datalogger (+1k6 code)
 
 // Power monitoring sensors -----------------------
 //#define USE_PZEM004T                             // Add support for PZEM004T Energy monitor (+2k code)
@@ -370,6 +367,7 @@
 //#define USE_MCP39F501                            // Add support for MCP39F501 Energy monitor as used in Shelly 2 (+3k1 code)
 
 // -- Low level interface devices -----------------
+//#define USE_MAX31855                             // Add support for MAX31855 K-Type thermocouple sensor using softSPI
 //#define USE_IR_REMOTE                            // Send IR remote commands using library IRremoteESP8266 and ArduinoJson (+4k3 code, 0k3 mem, 48 iram)
 //  #define USE_IR_HVAC                            // Support for HVAC (Toshiba, Mitsubishi and LG) system using IR (+3k5 code)
   #define USE_IR_RECEIVE                         // Support for IR receiver (+7k2 code, 264 iram)
@@ -394,6 +392,10 @@
 //#define USE_TX20_WIND_SENSOR                     // Add support for La Crosse TX20 anemometer (+2k code)
 
 //#define USE_RC_SWITCH                            // Add support for RF transceiver using library RcSwitch (+2k7 code, 460 iram)
+
+//#define USE_RF_SENSOR                            // Add support for RF sensor receiver (434MHz or 868MHz) (+0k8 code)
+//  #define USE_THEO_V2                            // Add support for decoding Theo V2 sensors as documented on https://sidweb.nl using 434MHz RF sensor receiver (+1k4 code)
+//  #define USE_ALECTO_V2                          // Add support for decoding Alecto V2 sensors like ACH2010, WS3000 and DKW2012 weather stations using 868MHz RF sensor receiver (+1k7 code)
 
 /*********************************************************************************************\
  * Debug features are only supported in development branch
